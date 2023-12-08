@@ -15,7 +15,7 @@ import random
 
 WIDTH = 600  # Khung Nhìn
 WIN = pygame.display.set_mode((WIDTH, WIDTH)) # Kích Thước cửa sổ khi hiện game
-pygame.display.set_caption("Lối Ra Ma Trận") # Tên Khi Hiện Ra Game
+pygame.display.set_caption("Lối Đi Ma Trận") # Tên Khi Hiện Ra Game
 # Thiết Lập Màu Sắc 
 RED = (252, 255, 21)
 GREEN = (0, 255, 0)
@@ -88,43 +88,59 @@ class Node:
     # Vẽ Node với màu sắc đã được đặt ở trên
     def draw(self, win):
         pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
-    # Cập nhật danh sách các Node lân cận dựa trên lưới đã cho.
-    """Hàm này được sử dụng để cập nhật danh sách các Node lân cận của Node hiện tại trong lưới.
-    Các Node lân cận được xác định dựa trên vị trí của Node trong lưới và không phải là rào cản.
-    Sau khi cập nhật, danh sách neighbors của Node hiện tại sẽ chứa các Node lân cận có thể di chuyển đến.
-    Thứ tự xác định các Node lân cận: BOTTOM (dưới), TOP (trên), RIGHT (phải), LEFT (trái)."""
+    
     def update_neighbors(self, grid):
+        # Cập nhật danh sách các Node lân cận dựa trên lưới đã cho.
+        """Hàm này được sử dụng để cập nhật danh sách các Node lân cận của Node hiện tại trong lưới.
+        Các Node lân cận được xác định dựa trên vị trí của Node trong lưới và không phải là rào cản.
+        Sau khi cập nhật, danh sách neighbors của Node hiện tại sẽ chứa các Node lân cận có thể di chuyển đến.
+        Thứ tự xác định các Node lân cận: BOTTOM (dưới), TOP (trên), RIGHT (phải), LEFT (trái)."""
         # Đối tượng Node hiện tại.
         self.neighbors = []
         # DOWN
+        """Kiểm tra xem Node hiện tại không nằm ở hàng cuối cùng và Node láng giềng phía dưới 
+        không phải là rào cản. Nếu điều kiện này được thỏa mãn, Node láng giềng phía dưới 
+        sẽ được thêm vào danh sách Node láng giềng của Node hiện tại"""
         if self.row < self.total_rows - 1 and not grid[self.row + 1][self.col].is_barrier():
             self.neighbors.append(grid[self.row + 1][self.col])
         # UP
+        """Kiểm tra xem Node hiện tại không nằm ở hàng đầu tiên và Node láng giềng phía trên 
+        không phải là rào cản. Nếu điều kiện này được thỏa mãn, Node láng giềng phía trên sẽ 
+        được thêm vào danh sách Node láng giềng của Node hiện tại."""
         if self.row > 0 and not grid[self.row - 1][self.col].is_barrier():
             self.neighbors.append(grid[self.row - 1][self.col])
         # RIGHT
+        """ Kiểm tra xem Node hiện tại không nằm ở cột cuối cùng và Node láng giềng bên phải 
+        không phải là rào cản. Nếu điều kiện này được thỏa mãn, Node láng giềng bên phải sẽ
+        được thêm vào danh sách Node láng giềng của Node hiện tại."""
         if self.col < self.total_rows - 1 and not grid[self.row][self.col + 1].is_barrier():
             self.neighbors.append(grid[self.row][self.col + 1])
         # LEFT
+        """Kiểm tra xem Node hiện tại không nằm ở cột đầu tiên và Node láng giềng bên trái 
+        không phải là rào cản. Nếu điều kiện này được thỏa mãn, Node láng giềng bên trái 
+        sẽ được thêm vào danh sách Node láng giềng của Node hiện tại."""
         if self.col > 0 and not grid[self.row][self.col - 1].is_barrier(): 
             self.neighbors.append(grid[self.row][self.col - 1])
     # Phương thức so sánh cần thiết cho sắp xếp trong hàng đợi ưu tiên
     def __lt__(self, other):
         return False
-"""
-    Hàm tính khoảng cách Manhattan giữa hai điểm trong không gian 2D.
+
+def h(p1, p2):
+    """
+    Hàm tính khoảng cách heuristic giữa hai điểm trong không gian 2D.
     Tham số:
     - p1: Tọa độ điểm đầu (x1, y1).
     - p2: Tọa độ điểm cuối (x2, y2).
-    Hàm này tính và trả về khoảng cách Manhattan giữa hai điểm p1 và p2.
-    Khoảng cách Manhattan là tổng độ lớn của sự chênh lệch về giá trị tuyệt đối
+    Hàm này tính và trả về khoảng cách heuristic giữa hai điểm p1 và p2.
+    Khoảng cách heuristic là tổng độ lớn của sự chênh lệch về giá trị tuyệt đối
     giữa các tọa độ x và y của hai điểm trong không gian 2 chiều.
-"""
-def h(p1, p2):
+    """
     x1, y1 = p1
     x2, y2 = p2
     return abs(x1 - x2) + abs(y1 - y2)
-"""
+    
+def reconstruct_path(came_from, current, draw):
+    """
     Xây dựng đường đi từ đích về điểm bắt đầu theo thuật toán tìm đường.
     Tham số:
     - came_from: Dictionary lưu lại các bước trước của mỗi Node trong quá trình tìm đường.
@@ -133,20 +149,23 @@ def h(p1, p2):
     Hàm này sử dụng thông tin trong dictionary came_from để tái tạo đường đi từ Node đích
     về Node bắt đầu theo thuật toán tìm đường. Khi di chuyển qua mỗi Node trên đường đi,
     nó gọi hàm make_path() để biểu thị Node đó thuộc đường đi, sau đó gọi hàm draw() để vẽ lại cửa sổ.
-"""
-def reconstruct_path(came_from, current, draw):
+    """
     while current in came_from:
-        current = came_from[current]
-        current.make_path()
-        draw()
-# Mục đích của hàm algorithm là thực hiện thuật toán A* để tìm đường đi ngắn nhất 
-# từ điểm bắt đầu đến điểm kết thúc trong ma trận ô vuông. Hàm này sử dụng 
-# hàng đợi ưu tiên để duyệt các ô và cập nhật các điểm 
-# g (độ dài đường đi từ điểm bắt đầu tới ô hiện tại) và điểm f (tổng điểm g và h) của từng ô.
-#Khi thuật toán hoàn thành, nếu tìm thấy đường đi từ điểm bắt đầu tới điểm kết thúc, 
-# nó sẽ trả về True, ngược lại sẽ trả về False. Các bước trong thuật toán A* 
-# được thực hiện để tìm đường đi ngắn nhất trong ma trận từ điểm bắt đầu tới điểm kết thúc
+        # Trong khi vẫn còn Node trong danh sách 'came_from':
+        current = came_from[current]  # Di chuyển đến Node trước đó trong đường đi tối ưu
+        current.make_path()  # Đánh dấu Node hiện tại là một phần của đường đi tối ưu
+        draw()  # Cập nhật giao diện để hiển thị Node hiện tại đã được đánh dấu là một phần của đường đi tối ưu
+
+
 def algorithm(draw, grid, start, end):
+    """Mục đích của hàm algorithm là thực hiện thuật toán A* để tìm đường đi 
+    ngắn nhất từ điểm bắt đầu đến điểm kết thúc trong ma trận ô vuông.
+    Hàm này sử dụng hàng đợi ưu tiên để duyệt các ô và cập nhật các điểm g
+    (độ dài đường đi từ điểm bắt đầu tới ô hiện tại) và điểm f (tổng điểm g và h)
+    của từng ô. Khi thuật toán hoàn thành, nếu tìm thấy đường đi từ điểm bắt đầu
+    tới điểm kết thúc, nó sẽ trả về True, ngược lại sẽ trả về False.
+    Các bước trong thuật toán A* được thực hiện để tìm đường đi ngắn nhất 
+    trong ma trận từ điểm bắt đầu tới điểm kết thúc"""
     count = 0
     # Tạo một hàng đợi ưu tiên để lưu trữ các ô đang xét
     open_set = PriorityQueue()
@@ -236,7 +255,7 @@ def make_grid(rows, width):
             node = Node(i, j, gap, rows)  # Tạo Node với vị trí và kích thước
             grid[i].append(node)  # Thêm Node vào hàng tương ứng trong grid
 
-    # Thêm rào cản ngẫu nhiên vào một số Node để tạo cấu trúc giống mê cung
+    # Thêm rào cản ngẫu nhiên vào một số Node để tạo cấu trúc mê cung
     for row in grid:
         for node in row:
             if random.random() < 0.3:  # Chọn ngẫu nhiên với xác suất 30% (có thể điều chỉnh)
@@ -347,7 +366,7 @@ def main(win, width):
                 pos = pygame.mouse.get_pos()
                 row, col = get_clicked_pos(pos, ROWS, width)
                 node = grid[row][col]
-                if not start and node != end:
+                if not start and node != end :
                     start = node
                     start.make_start()  # Đánh dấu Node là điểm bắt đầu
 
@@ -386,4 +405,4 @@ def main(win, width):
 
 
 main(WIN, WIDTH)
-# Tạm Biệt Hihi 
+# Tạm Biệt Hihi  
